@@ -22,23 +22,23 @@
  * THE SOFTWARE.
  */
 
-import React from 'react'
-import {ILook} from '@looker/sdk'
-import {List, Heading, Box, ListItem, Link, Text} from '@looker/components'
+import React from "react";
+import { ILook } from "@looker/sdk";
+import { List, Heading, Box, ListItem, Link, Text } from "@looker/components";
 
 interface LookListProps {
-  looks: ILook[]
-  loading: boolean
-  selectLook: (look: ILook) => void
+  looks: ILook[];
+  loading: boolean;
+  selectLook: (look: ILook) => void;
 }
 
 export const LookList: React.FC<LookListProps> = (props) => (
-  <Box m='small' width={200}>
-    <Heading as='h3' mb='small'>
+  <Box m="small" width={200}>
+    <Heading as="h3" mb="small">
       Looks
     </Heading>
     {props.loading ? (
-      <Text mr='large'>Loading...</Text>
+      <Text mr="large">Loading...</Text>
     ) : (
       <List>
         {props.looks.map((look) =>
@@ -49,7 +49,7 @@ export const LookList: React.FC<LookListProps> = (props) => (
               </Link>
             </ListItem>
           ) : (
-            <Text key='error' color='palette.red500'>
+            <Text key="error" color="palette.red500">
               Failed to load
             </Text>
           )
@@ -57,4 +57,4 @@ export const LookList: React.FC<LookListProps> = (props) => (
       </List>
     )}
   </Box>
-)
+);

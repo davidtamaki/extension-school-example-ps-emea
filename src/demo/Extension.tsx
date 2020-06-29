@@ -1,3 +1,5 @@
+// original github.com/looker-open-source/extension-template-react/blob/master/src/demo/Extension.tsx
+
 /*
  * The MIT License (MIT)
  *
@@ -22,53 +24,85 @@
  * THE SOFTWARE.
  */
 
-import React from 'react'
-import {LookList} from './LookList'
-import {QueryContainer} from './QueryContainer'
-import {Banner, Box, Heading, Flex} from '@looker/components'
-import {ExtensionContext} from '@looker/extension-sdk-react'
-import {ILook} from '@looker/sdk'
-import {Switch, Route, RouteComponentProps, withRouter, MemoryRouter} from 'react-router-dom'
-import { hot } from "react-hot-loader/root"
+import React from "react";
+import { LookList } from "./LookList";
+import { QueryContainer } from "./QueryContainer";
+import {
+  // Banner,
+  MessageBar,
+  Button,
+  Box,
+  Heading,
+  Flex,
+  Fieldset,
+  FieldText,
+} from "@looker/components";
+import { ExtensionContext } from "@looker/extension-sdk-react";
+import { ILook } from "@looker/sdk";
+import {
+  Switch,
+  Route,
+  RouteComponentProps,
+  withRouter,
+  MemoryRouter,
+} from "react-router-dom";
+import { hot } from "react-hot-loader/root";
 
 interface ExtensionState {
-  looks?: ILook[]
-  currentLook?: ILook
-  selectedLookId?: number
-  queryResult?: any
-  runningQuery: boolean
-  loadingLooks: boolean
-  errorMessage?: string
+  looks?: ILook[];
+  currentLook?: ILook;
+  selectedLookId?: number;
+  queryResult?: any;
+  runningQuery: boolean;
+  loadingLooks: boolean;
+  errorMessage?: string;
+  inlineQueryProps: InlineQuery;
 }
 
-class ExtensionInternal extends React.Component<RouteComponentProps, ExtensionState> {
-  static contextType = ExtensionContext
-  context!: React.ContextType<typeof ExtensionContext>
+interface InlineQuery {
+  model: string;
+  explore: string;
+  fields: string;
+  limit: string;
+}
+
+class ExtensionInternal extends React.Component<
+  RouteComponentProps,
+  ExtensionState
+> {
+  static contextType = ExtensionContext;
+  context!: React.ContextType<typeof ExtensionContext>;
 
   constructor(props: RouteComponentProps) {
-    super(props)
+    super(props);
     this.state = {
       looks: undefined,
       selectedLookId: undefined,
       currentLook: undefined,
       queryResult: undefined,
       runningQuery: false,
-      loadingLooks: false
-    }
+      loadingLooks: false,
+      inlineQueryProps: {
+        model: "bq_thelook_web_analytics",
+        explore: "events",
+        fields: "users.id, events.count",
+        limit: "20",
+      },
+    };
   }
 
   componentDidMount() {
-    const {initializeError} = this.context
+    const { initializeError } = this.context;
     if (initializeError) {
-      return
+      return;
     }
-    this.loadLooks()
+    this.loadLooks();
   }
 
   componentDidUpdate() {
-    const {initializeError} = this.context
+    const { initializeError } = this.context;
     if (initializeError) {
-      return
+      return;
     }
     // Changes to the browser history drives the running of looks.
     // The look id is part of the URL. Any change to the URL causes
@@ -80,136 +114,229 @@ class ExtensionInternal extends React.Component<RouteComponentProps, ExtensionSt
     // browser back button is pressed. Adding the look id to the URL
     // causes componentDidUpdate to run again. When it runs again
     // the look is present and valid. At that point the look is run.
-    const {looks, runningQuery, selectedLookId} = this.state
+    const { looks, runningQuery, selectedLookId } = this.state;
     if (looks && looks.length > 0 && !runningQuery) {
-      const {location} = this.props
-      const path: string[] = location.pathname.split('/')
-      let id: number | undefined
-      if (path.length > 1 && path[1] !== '') {
-        id = parseInt(path[1], 10)
+      const { location } = this.props;
+      const path: string[] = location.pathname.split("/");
+      let id: number | undefined;
+      if (path.length > 1 && path[1] !== "") {
+        id = parseInt(path[1], 10);
       }
       if (!id || isNaN(id)) {
-        this.props.history.replace('/' + looks[0].id)
+        this.props.history.replace("/" + looks[0].id);
       } else {
         if (id !== selectedLookId) {
-          this.setState({selectedLookId: id})
-          this.runLook(id)
+          this.setState({ selectedLookId: id });
+          this.runLook(id);
         }
       }
     }
   }
 
-  /*
-  // TEMPLATE CODE FOR RUNNING ANY QUERY
-  async runQuery() {
-      try {
+  ////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////
+  ///////////////////// Run Inline Query /////////////////////
+
+  runInlineQuery = async () => {
+    this.setState({
+      runningQuery: true,
+      errorMessage: undefined,
+      currentLook: undefined,
+    });
+
+    const limitNumber = parseInt(this.state.inlineQueryProps.limit); // convert to number
+    const fieldsArray = this.state.inlineQueryProps.fields.split(","); // convert to string[]
+
+    try {
       const result = await this.context.core40SDK.ok(
         this.context.core40SDK.run_inline_query({
-          result_format: "json_detail",
-          limit: 10,
+          result_format: "json",
+          limit: limitNumber,
           body: {
-            total: true,
-            model: "thelook",
-            view: "users",
-            fields: ["last_name", "gender"],
-            sorts: [`last_name desc`]
-          }
+            model: this.state.inlineQueryProps.model,
+            view: this.state.inlineQueryProps.explore,
+            fields: fieldsArray,
+          },
         })
-      )
+      );
+
+      console.log(JSON.stringify(result, undefined, 2));
+
       this.setState({
-        queryResult: JSON.stringify(result, undefined, 2),
-        runningQuery: false
-      })
+        queryResult: result,
+        runningQuery: false,
+      });
     } catch (error) {
       this.setState({
         queryResult: "",
         runningQuery: false,
-        errorMessage: "Unable to run query"
-      })
+        errorMessage: "Unable to run query",
+      });
     }
-  }
-  */
+  };
+
+  ////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////
+  /////////////////////// Run Look ///////////////////////////
 
   async runLook(look_id: number) {
-    const look = (this.state.looks || []).find((l) => l.id == look_id)
+    const look = (this.state.looks || []).find((l) => l.id == look_id);
     // If no matching Look then return
     if (look === undefined) {
       this.setState({
         selectedLookId: undefined,
         currentLook: undefined,
-        errorMessage: 'Unable to load Look.',
-        queryResult: '',
-        runningQuery: false
-      })
-      return
+        errorMessage: "Unable to load Look.",
+        queryResult: "",
+        runningQuery: false,
+      });
+      return;
     }
 
     // Set Page title
-    this.context.extensionSDK.updateTitle(`Look: ${look.title || 'unknown'}`)
+    this.context.extensionSDK.updateTitle(`Look: ${look.title || "unknown"}`);
 
-    this.setState({currentLook: look, runningQuery: true, errorMessage: undefined})
+    this.setState({
+      currentLook: look,
+      runningQuery: true,
+      errorMessage: undefined,
+    });
 
     try {
       const result = await this.context.core40SDK.ok(
-        this.context.core40SDK.run_look({look_id: look_id, result_format: 'json'})
-      )
+        this.context.core40SDK.run_look({
+          look_id: look_id,
+          result_format: "json",
+        })
+      );
       this.setState({
         queryResult: result,
-        runningQuery: false
-      })
+        runningQuery: false,
+      });
     } catch (error) {
       this.setState({
-        queryResult: '',
+        queryResult: "",
         runningQuery: false,
-        errorMessage: 'Unable to run look'
-      })
+        errorMessage: "Unable to run look",
+      });
     }
   }
 
+  ////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////
+  ///////////////////// Load Looks ///////////////////////////
+
   async loadLooks() {
-    this.setState({loadingLooks: true, errorMessage: undefined})
+    this.setState({ loadingLooks: true, errorMessage: undefined });
     try {
-      const result = await this.context.core40SDK.ok(this.context.core40SDK.all_looks())
+      const result = await this.context.core40SDK.ok(
+        this.context.core40SDK.all_looks()
+      );
       this.setState({
         // Take up to the first 10 looks
-        looks: result.slice(0, 9),
-        loadingLooks: false
-      })
+        looks: result.slice(0, 10),
+        loadingLooks: false,
+      });
     } catch (error) {
       this.setState({
         looks: [],
         loadingLooks: false,
-        errorMessage: 'Error loading looks'
-      })
+        errorMessage: "Error loading looks",
+      });
     }
   }
 
   onLookSelected(look: ILook) {
-    const { currentLook } = this.state
+    const { currentLook } = this.state;
     if (!currentLook || currentLook.id !== look.id) {
       // Update the look id in the URL. This will trigger componentWillUpdate
       // which will run the look.
-      this.props.history.push('/' + look.id)
+      this.props.history.push("/" + look.id);
     }
   }
 
   render() {
+    // to explain
+    // react -  JSX, state
+    // JS/typescript - interfaces, async / await
+    // compoenents - table, banner, etc
+    //
+    // console.table(this.state);
+    // console.log(this.state.runningQuery);
+    // console.log(this.state.inlineQueryProps);
+
     if (this.context.initializeError) {
-      return <Banner intent='error'>{this.context.initializeError}</Banner>
+      return (
+        <MessageBar intent="critical">
+          {this.context.initializeError}
+        </MessageBar>
+      );
     }
     return (
       <>
-        {this.state.errorMessage && <Banner intent='error'>{this.state.errorMessage}</Banner>}
-        <Box m='large'>
-          <Heading fontWeight='semiBold'>Welcome to the Looker Extension Template</Heading>
-          <Flex width='100%'>
+        {this.state.errorMessage && (
+          <MessageBar intent="critical">{this.state.errorMessage}</MessageBar>
+        )}
+        <Box m="large">
+          <Heading fontWeight="semiBold">
+            Welcome to the Looker Extension Template
+          </Heading>
+
+          <Box>
+            <Flex>
+              <Fieldset inline legend="Enter Inline Query Details">
+                <FieldText
+                  label="Model"
+                  value={this.state.inlineQueryProps.model}
+                  onChange={(e: any) => {
+                    // console.log(e.target.value);
+                    const lastState = this.state.inlineQueryProps;
+                    lastState.model = e.target.value;
+                    this.setState({ inlineQueryProps: lastState });
+                  }}
+                />
+                <FieldText
+                  label="Explore"
+                  value={this.state.inlineQueryProps.explore}
+                  onChange={(e: any) => {
+                    const lastState = this.state.inlineQueryProps;
+                    lastState.explore = e.target.value;
+                    this.setState({ inlineQueryProps: lastState });
+                  }}
+                />
+                <FieldText
+                  label="Fields"
+                  value={this.state.inlineQueryProps.fields}
+                  onChange={(e: any) => {
+                    const lastState = this.state.inlineQueryProps;
+                    lastState.fields = e.target.value;
+                    this.setState({ inlineQueryProps: lastState });
+                  }}
+                />
+                <FieldText
+                  label="Limit"
+                  value={this.state.inlineQueryProps.limit}
+                  onChange={(e: any) => {
+                    const lastState = this.state.inlineQueryProps;
+                    lastState.limit = e.target.value;
+                    this.setState({ inlineQueryProps: lastState });
+                  }}
+                />
+                <Button mt="large" onClick={this.runInlineQuery}>
+                  Go!
+                </Button>
+              </Fieldset>
+            </Flex>
+          </Box>
+
+          <Flex width="100%">
             <LookList
               loading={this.state.loadingLooks}
               looks={this.state.looks || []}
               selectLook={(look: ILook) => this.onLookSelected(look)}
             />
             <Switch>
-              <Route path='/:id'>
+              <Route path="/:id">
                 <QueryContainer
                   look={this.state.currentLook}
                   results={this.state.queryResult}
@@ -220,8 +347,8 @@ class ExtensionInternal extends React.Component<RouteComponentProps, ExtensionSt
           </Flex>
         </Box>
       </>
-    )
+    );
   }
 }
 
-export const Extension = hot(withRouter(ExtensionInternal))
+export const Extension = hot(withRouter(ExtensionInternal));

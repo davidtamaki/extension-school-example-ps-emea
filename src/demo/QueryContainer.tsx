@@ -22,8 +22,8 @@
  * THE SOFTWARE.
  */
 
-import React from 'react'
-import {ILook} from '@looker/sdk'
+import React from "react";
+import { ILook } from "@looker/sdk";
 import {
   TableDataCell,
   Heading,
@@ -33,36 +33,41 @@ import {
   TableBody,
   Table,
   TableRow,
-  TableHeaderCell
-} from '@looker/components'
+  TableHeaderCell,
+} from "@looker/components";
 
 export interface QueryProps {
-  look?: ILook
-  results?: string
-  running: boolean
+  look?: ILook;
+  results?: string;
+  running: boolean;
 }
 
 const headings = (results?: any): Array<String> => {
   if (!results || !results.length || results.length === 0) {
-    return []
+    return [];
   }
-  return Object.keys(results[0]).map((key) => key)
-}
+  return Object.keys(results[0]).map((key) => key);
+};
 
 const values = (results?: any): string[][] => {
   if (!results || !results.length || results.length === 0) {
-    return []
+    return [];
   }
-  return results.map((result: string) => Object.keys(result).map((key) => `${(result as any)[key]}`))
-}
+  return results.map((result: string) =>
+    Object.keys(result).map((key) => `${(result as any)[key]}`)
+  );
+};
 
-export const QueryContainer: React.FC<QueryProps> = ({look, results, running}) => (
-  <Box m='small' width='100%'>
-    <Heading as='h3' mb='small'>
-      Query:
-      {look ? ' ' + look.title : ''}
+export const QueryContainer: React.FC<QueryProps> = ({
+  look,
+  results,
+  running,
+}) => (
+  <Box m="small" width="100%">
+    <Heading as="h3" mb="small">
+      {look ? " " + look.title : ""}
     </Heading>
-    {running && <Text mr='large'>Running Query ...</Text>}
+    {running && <Text mr="large">Running Query ...</Text>}
     {!running && (
       <Table>
         <TableHead>
@@ -74,11 +79,13 @@ export const QueryContainer: React.FC<QueryProps> = ({look, results, running}) =
         </TableHead>
         <TableBody>
           {values(results)
-            .filter((row) => row.find((column) => column !== ''))
+            .filter((row) => row.find((column) => column !== ""))
             .map((row, rowIndex) => (
               <TableRow key={rowIndex}>
                 {row.map((column, columnIndex) => (
-                  <TableDataCell key={`${rowIndex}-${columnIndex}`}>{column}</TableDataCell>
+                  <TableDataCell key={`${rowIndex}-${columnIndex}`}>
+                    {column}
+                  </TableDataCell>
                 ))}
               </TableRow>
             ))}
@@ -86,4 +93,4 @@ export const QueryContainer: React.FC<QueryProps> = ({look, results, running}) =
       </Table>
     )}
   </Box>
-)
+);
